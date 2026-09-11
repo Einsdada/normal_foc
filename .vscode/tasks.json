@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "download",
+            "type": "shell",
+            "command": "openocd",
+            "args": [
+                "-f",
+                "interface/cmsis-dap.cfg",
+                "-f",
+                "target/stm32g4x.cfg",
+                "-c",
+                "program build/Debug/${workspaceFolderBasename}.elf verify reset exit"
+            ],
+            "group": "build",
+            "dependsOn": "build"
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "cube-cmake",
+            "args": [
+                "--build",
+                "build/Debug"
+            ],
+            "group": "build"
+        }
+    ]
+}
