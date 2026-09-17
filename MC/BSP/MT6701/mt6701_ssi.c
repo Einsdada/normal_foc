@@ -1,16 +1,12 @@
-#include "encoder.h"
+#include "mt6701.h"
 #include "spi.h"
 
 extern SPI_HandleTypeDef hspi3;
 
-#define SSI_CSN_PORT    GPIOA
-#define SSI_CSN_PIN     GPIO_PIN_15
-
-#define SSI_MODE_PORT   GPIOA
-#define SSI_MODE_PIN    GPIO_PIN_2
-
-#define SSI_CSN_LOW()   HAL_GPIO_WritePin(SSI_CSN_PORT, SSI_CSN_PIN, GPIO_PIN_RESET)
-#define SSI_CSN_HIGH()  HAL_GPIO_WritePin(SSI_CSN_PORT, SSI_CSN_PIN, GPIO_PIN_SET)
+/* 寄存器级 GPIO 操作：BSRR 原子置位/复位，省去 HAL 函数调用
+   低 16 位写 1 = 置高，高 16 位写 1 = 置低 */
+#define SSI_CSN_LOW()    (MT6701_SSI_CSN_PORT->BSRR = (uint32_t)MT6701_SSI_CSN_PIN << 16U)
+#define SSI_CSN_HIGH()   (MT6701_SSI_CSN_PORT->BSRR = (uint32_t)MT6701_SSI_CSN_PIN)
 
 static uint8_t rx_buf[3];
 
@@ -20,10 +16,10 @@ static volatile uint8_t  enc_valid = 0;   /* 是否已经读到过有效帧 */
 static volatile uint8_t  enc_busy  = 0;   /* DMA 是否正在搬运 */
 
 
-void Encoder_HW_Init(void)
+void MT6701_Ssi_Init(void)
 {
-    // 选择模式的引脚。使用ssi：mode=1；CSN=0传输开始；CLK下降沿传输数据
-    HAL_GPIO_WritePin(SSI_MODE_PORT, SSI_MODE_PIN, GPIO_PIN_SET);//mode
+    /* MODE 置高选择 SSI 模式（CSN 由软件控制，先拉高保持空闲） */
+    MT6701_SSI_MODE_PORT->BSRR = (uint32_t)MT6701_SSI_MODE_PIN;
     SSI_CSN_HIGH();
 
     enc_angle = 0;
@@ -35,7 +31,7 @@ void Encoder_HW_Init(void)
 static uint8_t CalcCRC(uint32_t data18)
 {
     uint8_t crc = 0x00;
-    for (int i = 0; i < 18; i++) 
+    for (int i = 0; i < 18; i++)
     {
         uint8_t bit = (data18 >> (17 - i)) & 0x01;
         uint8_t msb = (crc >> 5) & 0x01;
@@ -69,9 +65,9 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 }
 
 
-uint8_t Encoder_Process_RawData(Encoder_RawData_t *data)
+uint8_t MT6701_Ssi_Process_RawData(Encoder_RawData_t *data)
 {
-    // 1. 先把下一帧发出去（非阻塞，立即返回）
+    // 1. 先把下一帧发出去（非阻塞，立即返回；CSN 提前拉低保证建立时间 TL>=100ns）
     if (!enc_busy)
     {
         SSI_CSN_LOW();

@@ -113,6 +113,8 @@ void Error_Handler(void);
 #define TEXT3_GPIO_Port GPIOB
 #define TEXT2_Pin GPIO_PIN_4
 #define TEXT2_GPIO_Port GPIOB
+#define TEXT1_Pin GPIO_PIN_5
+#define TEXT1_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
