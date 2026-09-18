@@ -20,10 +20,10 @@
 #define I2C_SCL_LO()  (GPIOA->BSRR = (uint32_t)I2C_SCL_PIN << 16U)
 #define I2C_SDA_GET() ((GPIOA->IDR & I2C_SDA_PIN) != 0U)
 
-/* 100kHz：@170MHz 每半周期约 5µs */
+/* 100kHz：@170MHz 每个 NOP≈5.9ns，半周期 5µs ≈ 850 次 NOP */
 static void i2c_delay(void)
 {
-    volatile uint32_t n = 100U;
+    volatile uint32_t n = 850U;
     while (n--) { __NOP(); }
 }
 
@@ -141,6 +141,8 @@ static uint8_t reg_read(uint8_t reg)
     return val;
 }
 
+uint8_t MT6701_Abz_CfgOk = 0;   /* 配置结果（1=成功 0=失败），供诊断打印 */
+
 /* =====================================================================
  * @brief  配置芯片 ABZ 分辨率（写 RAM，每次上电执行）
  * @param  ppr  线数（如 1024）
@@ -170,5 +172,6 @@ uint8_t MT6701_Abz_Configure(uint16_t ppr)
     pin_restore();
     MT6701_SSI_MODE_PORT->BSRR = (uint32_t)MT6701_SSI_MODE_PIN << 16U;
 
+    MT6701_Abz_CfgOk = ok;
     return ok;
 }

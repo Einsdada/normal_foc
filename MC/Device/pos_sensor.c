@@ -63,7 +63,7 @@ void PosSensor_Init(PosSensor_Handle_t *handle, PosSensor_Type_e type, uint16_t 
 /**
  * @brief  更新一次角度/速度/位置数据，返回是否有有效数据
  */
-uint8_t PosSensor_Update(PosSensor_Handle_t *handle, float dt)
+uint8_t PosSensor_Update(PosSensor_Handle_t *handle, uint16_t freq)
 {
     Encoder_RawData_t data;
 
@@ -79,7 +79,7 @@ uint8_t PosSensor_Update(PosSensor_Handle_t *handle, float dt)
             if (handle->valid)                      /* 已有上一帧才解算速度/位置 */
             {
                 float delta = AngleDelta(handle->mech_angle, handle->mech_angle_last);
-                handle->mech_speed = delta * INV_TWO_PI / dt;   /* rps，仅 dt 处 1 次除法 */
+                handle->mech_speed = delta * INV_TWO_PI * (float)freq;   /* rps，无除法 */
                 handle->position  += delta;                     /* rad */
             }
             handle->mech_angle_last = handle->mech_angle;
@@ -98,7 +98,7 @@ uint8_t PosSensor_Update(PosSensor_Handle_t *handle, float dt)
             if (handle->valid)                      /* 已有上一帧才解算速度/位置 */
             {
                 float delta = AngleDelta(handle->mech_angle, handle->mech_angle_last);
-                handle->mech_speed = delta * INV_TWO_PI / dt;   /* rps，仅 dt 处 1 次除法 */
+                handle->mech_speed = delta * INV_TWO_PI * (float)freq;   /* rps，无除法 */
                 handle->position  += delta;                     /* rad */
             }
             handle->mech_angle_last = handle->mech_angle;

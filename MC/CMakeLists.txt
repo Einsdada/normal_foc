@@ -8,16 +8,19 @@
 add_library(mc STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/user.c
     ${CMAKE_CURRENT_SOURCE_DIR}/user_debug.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/led.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Led/led_bsp_pwm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Led/led_bsp_gpio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/MT6701/mt6701_ssi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/MT6701/mt6701_abz.c
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/MT6701/mt6701_i2c_soft.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Device/pos_sensor.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Device/led.c
 )
 
 # 头文件搜索路径
 target_include_directories(mc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/BSP/Led
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/MT6701
     ${CMAKE_CURRENT_SOURCE_DIR}/Device
 )

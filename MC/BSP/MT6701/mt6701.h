@@ -57,5 +57,6 @@ void    MT6701_Abz_Clear(void);
 
 /* ============ ABZ 分辨率配置（实现：mt6701_i2c_soft.c） ============ */
 uint8_t MT6701_Abz_Configure(uint16_t ppr);   /* 软件 I2C 写 RAM 配置，返回 1=成功 */
+extern uint8_t MT6701_Abz_CfgOk;              /* 上次配置结果（1=成功 0=失败），供诊断打印 */
 
 #endif

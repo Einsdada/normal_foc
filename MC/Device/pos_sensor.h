@@ -40,11 +40,11 @@ void PosSensor_Init(PosSensor_Handle_t *handle, PosSensor_Type_e type, uint16_t 
 /**
  * @brief  更新一次角度/速度/位置数据
  * @param  handle  句柄
- * @param  dt      距上次更新的时间（秒），用于解算速度
+ * @param  freq    本函数调用频率（Hz，如 1ms 调用 = 1000），用于解算速度
  * @retval 1=读到有效数据，0=暂无有效数据
  * @note   需要连续读取时在循环里以固定周期反复调用
  */
-uint8_t PosSensor_Update(PosSensor_Handle_t *handle, float dt);
+uint8_t PosSensor_Update(PosSensor_Handle_t *handle, uint16_t freq);
 
 /**
  * @brief  获取机械角度（rad）
