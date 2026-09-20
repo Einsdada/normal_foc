@@ -6,8 +6,7 @@
 
 /* 固定常量运算用括号包起来，编译期即折叠为单个常量，运行时无除法 */
 #define INV_TWO_PI          (1.0f / TWO_PI)                     /* 1/2π ≈ 0.159155 */
-#define SSI_RAD_PER_COUNT   (TWO_PI / (float)MT6701_SSI_CPR)    /* SSI 每计数弧度 */
-#define ABZ_RAD_PER_COUNT   (TWO_PI / (float)MT6701_ABZ_CPR)    /* ABZ 每计数弧度 */
+
 
 /**
  * @brief  角度取模到 [0, 2π)

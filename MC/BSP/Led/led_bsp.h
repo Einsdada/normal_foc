@@ -17,6 +17,7 @@
 #define LED_BSP_USE_PWM    1       /* 1=PWM 驱动，0=GPIO 驱动（按硬件修改） */
 
 #define LED_BSP_DUTY_MAX    1000   /* 占空比满量程（PWM 通道 = ARR） */
+#define LED_BSP_ACTIVE_LOW  1      /* 1=LED 低电平点亮（IO 低=亮），0=高电平点亮（按硬件修改） */
 
 #if LED_BSP_USE_PWM
 /* ============ PWM 方式通道配置区（每通道 2 行） ============ */

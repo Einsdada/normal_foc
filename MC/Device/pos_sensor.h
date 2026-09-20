@@ -3,6 +3,9 @@
 
 #include "stdint.h"
 
+#define SSI_RAD_PER_COUNT   (TWO_PI / (float)MT6701_SSI_CPR)    /* SSI 每计数弧度 */
+#define ABZ_RAD_PER_COUNT   (TWO_PI / (float)MT6701_ABZ_CPR)    /* ABZ 每计数弧度 */
+
 /**
  * @brief  位置传感器类型
  * @note   位置传感器抽象层：SSI/ABZ 已实现，霍尔预留
