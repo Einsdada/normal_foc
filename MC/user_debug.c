@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-uint8_t rx_data;
 // 发送缓冲区
 static uint8_t uart_tx_buffer[TX_BUF_LEN];
 // 用于DMA发送完成的标志
@@ -14,13 +13,12 @@ static volatile uint8_t uart_tx_busy = 0;
 /* --------------------------------- 调试TX --------------------------------- */
 
 /**
- * @brief 初始化
- * 
+ * @brief 初始化（当前只发送：仅初始化串口，不开接收中断；
+ *        接收命令后期开发）
  */
 void Debug_Usart_Init(void)
 {
     MX_USART1_UART_Init();
-    HAL_UART_Receive_IT(&huart1, &rx_data, 1);
 }
 
 // DMA发送完成回调函数
@@ -30,13 +28,13 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     }
 }
 
-// 基于DMA的串口printf函数
-void uart_printf(const char *format, ...) {
+// 基于DMA的串口printf函数（返回 0 = 串口忙，本次内容被丢弃，调用方可重试）
+uint8_t uart_printf(const char *format, ...) {
     va_list args;
     uint16_t len;
     
     // 等待上一次DMA传输完成
-    if (uart_tx_busy) return;
+    if (uart_tx_busy) return 0;
     
     // 格式化字符串到缓冲区
     va_start(args, format);
@@ -53,6 +51,7 @@ void uart_printf(const char *format, ...) {
     
     // 使用DMA发送数据
     HAL_UART_Transmit_DMA(&huart1, uart_tx_buffer, len);
+    return 1;
 }
 
 
@@ -78,28 +77,8 @@ void uart_send_justfloat(float *data, uint16_t count)
 
 
 /* --------------------------------- 调试RX --------------------------------- */
-
-
-
-/* --------------------------------- 调试应用处理 --------------------------------- */
-
-// uint8_t Debug_Justfloat(MC_Handle_t *handle)
-// {
-//     float values[9];
-//     values[0] = handle->Target.position_rad;
-//     values[1] = handle->monitor.position_rad;
-//     values[2] = handle->Target.speed_rad_s;
-//     values[3] = handle->monitor.speed_rad_s;
-//     values[4] = handle->Target.torque;
-//     values[5] = handle->monitor.torque;
-//     values[6] = handle->monitor.angle_rad;
-//     values[7] = 0.0f; // 保留字段
-//     values[8] = 0.0f; // 保留字段
-
-//     uart_send_justfloat(values, 9);
-
-//     return 0;
-// }
+/* 接收命令后期开发：届时启用 HAL_UART_Receive_IT 并注册
+   HAL_UART_RxCpltCallback（单字节缓存 → 主循环解析） */
 
 
 

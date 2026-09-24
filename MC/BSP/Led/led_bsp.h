@@ -31,12 +31,16 @@
 #define LED_BSP_CH1_CH      TIM_CHANNEL_1
 */
 #else
-/* ============ GPIO 方式通道配置区（每通道 3 行） ============ */
+/* ============ GPIO 方式通道配置区（每通道 3 行） ============
+   ⚠ 这里原来写的是 GPIO_PIN_8 —— **PA8 是电机 A 相 PWM 引脚**（main.h: Motor_PWM_A_Pin），
+     而 LED 实际在 **PA7**（main.h: LED_Pin，TIM17_CH1）。当前 LED_BSP_USE_PWM=1
+     所以没被用到，但一旦切成 GPIO 方式就会去驱动电机 A 相，已改正。
+     极性也统一成低电平点亮（与 PWM 方式的 LED_BSP_ACTIVE_LOW=1 一致） */
 #define LED_BSP_CH_COUNT    1
 
 #define LED_BSP_CH0_PORT    GPIOA
-#define LED_BSP_CH0_PIN     GPIO_PIN_8
-#define LED_BSP_CH0_ACTIVE  1          /* 1=高电平亮，0=低电平亮 */
+#define LED_BSP_CH0_PIN     GPIO_PIN_7
+#define LED_BSP_CH0_ACTIVE  0          /* 1=高电平亮，0=低电平亮（本板低电平亮） */
 
 /* 增加通道示例：
 #define LED_BSP_CH1_PORT    GPIOB

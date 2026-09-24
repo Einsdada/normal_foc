@@ -10,10 +10,15 @@ extern SPI_HandleTypeDef hspi3;
 
 static uint8_t rx_buf[3];
 
+/* 连续多少次调用没等到 DMA 完成就判定"完成中断丢了/传输卡死"：
+   本函数由中频环 10kHz 调用 → 200 次 = 20ms（帧本身只要 ~2.3us @10MHz） */
+#define SSI_BUSY_TIMEOUT   200u
+
 /* DMA 读取状态 */
 static volatile uint16_t enc_angle = 0;   /* 最近一次 CRC 校验通过的角度 */
 static volatile uint8_t  enc_valid = 0;   /* 是否已经读到过有效帧 */
 static volatile uint8_t  enc_busy  = 0;   /* DMA 是否正在搬运 */
+static uint16_t          enc_busy_cnt = 0;/* 连续 busy 次数（卡死兜底计时） */
 
 
 void MT6701_Ssi_Init(void)
@@ -22,25 +27,59 @@ void MT6701_Ssi_Init(void)
     MT6701_SSI_MODE_PORT->BSRR = (uint32_t)MT6701_SSI_MODE_PIN;
     SSI_CSN_HIGH();
 
-    enc_angle = 0;
-    enc_valid = 0;
-    enc_busy  = 0;
+    enc_angle    = 0;
+    enc_valid    = 0;
+    enc_busy     = 0;
+    enc_busy_cnt = 0;
 }
 
 
+/* ---- CRC-6（多项式 0x03 = x^6 + x + 1，初值 0，18 位数据 MSB 先出）查表实现 ----
+ * 原实现是逐位循环（18 次迭代，且跑在最高优先级的 DMA 完成中断里）：
+ *      crc=0; 每 bit:{ msb=crc[5]; crc<<=1; if(msb^bit) crc^=0x03; crc&=0x3F; }
+ * 该 LFSR 对输入是线性的、初值为 0 ⇒ 把 18 位拆成 3 个 6 位块后
+ *      CRC(data) = T1[a] ^ T2[b] ^ T3[c]
+ * 于是 18 次循环 → 3 次查表 + 2 次异或（表共 192 字节）。
+ * 生成与验证：对"线性基"（每块单独遍历）以及 2000 组随机 18 位输入，
+ * 与逐位实现结果完全一致（0 处不一致）。 */
+static const uint8_t crc6_tbl[3][64] = {
+    {   /* T1[a] = CRC(a << 12) */
+        0x00, 0x0F, 0x1E, 0x11, 0x3C, 0x33, 0x22, 0x2D,
+        0x3B, 0x34, 0x25, 0x2A, 0x07, 0x08, 0x19, 0x16,
+        0x35, 0x3A, 0x2B, 0x24, 0x09, 0x06, 0x17, 0x18,
+        0x0E, 0x01, 0x10, 0x1F, 0x32, 0x3D, 0x2C, 0x23,
+        0x29, 0x26, 0x37, 0x38, 0x15, 0x1A, 0x0B, 0x04,
+        0x12, 0x1D, 0x0C, 0x03, 0x2E, 0x21, 0x30, 0x3F,
+        0x1C, 0x13, 0x02, 0x0D, 0x20, 0x2F, 0x3E, 0x31,
+        0x27, 0x28, 0x39, 0x36, 0x1B, 0x14, 0x05, 0x0A,
+    },
+    {   /* T2[b] = CRC(b << 6) */
+        0x00, 0x05, 0x0A, 0x0F, 0x14, 0x11, 0x1E, 0x1B,
+        0x28, 0x2D, 0x22, 0x27, 0x3C, 0x39, 0x36, 0x33,
+        0x13, 0x16, 0x19, 0x1C, 0x07, 0x02, 0x0D, 0x08,
+        0x3B, 0x3E, 0x31, 0x34, 0x2F, 0x2A, 0x25, 0x20,
+        0x26, 0x23, 0x2C, 0x29, 0x32, 0x37, 0x38, 0x3D,
+        0x0E, 0x0B, 0x04, 0x01, 0x1A, 0x1F, 0x10, 0x15,
+        0x35, 0x30, 0x3F, 0x3A, 0x21, 0x24, 0x2B, 0x2E,
+        0x1D, 0x18, 0x17, 0x12, 0x09, 0x0C, 0x03, 0x06,
+    },
+    {   /* T3[c] = CRC(c) */
+        0x00, 0x03, 0x06, 0x05, 0x0C, 0x0F, 0x0A, 0x09,
+        0x18, 0x1B, 0x1E, 0x1D, 0x14, 0x17, 0x12, 0x11,
+        0x30, 0x33, 0x36, 0x35, 0x3C, 0x3F, 0x3A, 0x39,
+        0x28, 0x2B, 0x2E, 0x2D, 0x24, 0x27, 0x22, 0x21,
+        0x23, 0x20, 0x25, 0x26, 0x2F, 0x2C, 0x29, 0x2A,
+        0x3B, 0x38, 0x3D, 0x3E, 0x37, 0x34, 0x31, 0x32,
+        0x13, 0x10, 0x15, 0x16, 0x1F, 0x1C, 0x19, 0x1A,
+        0x0B, 0x08, 0x0D, 0x0E, 0x07, 0x04, 0x01, 0x02,
+    },
+};
+
 static uint8_t CalcCRC(uint32_t data18)
 {
-    uint8_t crc = 0x00;
-    for (int i = 0; i < 18; i++)
-    {
-        uint8_t bit = (data18 >> (17 - i)) & 0x01;
-        uint8_t msb = (crc >> 5) & 0x01;
-        crc <<= 1;
-        if (msb ^ bit)
-            crc ^= 0x03;
-        crc &= 0x3F;
-    }
-    return crc;
+    return (uint8_t)(crc6_tbl[0][(data18 >> 12) & 0x3Fu]
+                   ^ crc6_tbl[1][(data18 >>  6) & 0x3Fu]
+                   ^ crc6_tbl[2][(data18      ) & 0x3Fu]);
 }
 
 
@@ -51,7 +90,8 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
     if (hspi->Instance != SPI3) return;
 
     SSI_CSN_HIGH();     // 一帧结束，释放片选
-    enc_busy = 0;
+    enc_busy     = 0;
+    enc_busy_cnt = 0;
 
     uint32_t raw24 = ((uint32_t)rx_buf[0] << 16) |
                      ((uint32_t)rx_buf[1] << 8)  |
@@ -68,6 +108,22 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi)
 uint8_t MT6701_Ssi_Process_RawData(Encoder_RawData_t *data)
 {
     // 1. 先把下一帧发出去（非阻塞，立即返回；CSN 提前拉低保证建立时间 TL>=100ns）
+    if (enc_busy)
+    {
+        /* 卡死兜底：DMA 完成中断若丢失，enc_busy 永远为 1 → 角度永久冻结，
+           电机角度看就是"转子不转/角度不动"，且校准状态机的"位置稳定"判据
+           还会误判为收敛成功。超时后中止本次传输、复位状态重新起帧。 */
+        if (++enc_busy_cnt >= SSI_BUSY_TIMEOUT)
+        {
+            enc_busy_cnt = 0u;
+            enc_busy     = 0u;
+            SSI_CSN_HIGH();
+            if (hspi3.State != HAL_SPI_STATE_READY)
+            {
+                HAL_SPI_Abort(&hspi3);      /* 半途卡住的 SPI/DMA：中止后重新起帧 */
+            }
+        }
+    }
     if (!enc_busy)
     {
         SSI_CSN_LOW();

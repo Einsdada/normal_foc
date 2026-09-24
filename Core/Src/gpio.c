@@ -54,7 +54,8 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, Encoder_mode_Pin|Motor_sleep_Pin|Motor_mode_Pin|Encoder_CSN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, TEXT3_Pin|TEXT2_Pin|TEXT1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, Motor_PWM_AN_Pin|Motor_PWM_BN_Pin|Motor_PWM_CN_Pin|TEXT3_Pin
+                          |TEXT2_Pin|TEXT1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : Encoder_mode_Pin Motor_sleep_Pin Motor_mode_Pin Encoder_CSN_Pin */
   GPIO_InitStruct.Pin = Encoder_mode_Pin|Motor_sleep_Pin|Motor_mode_Pin|Encoder_CSN_Pin;
@@ -69,18 +70,20 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Encoder_push_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : Motor_PWM_AN_Pin Motor_PWM_BN_Pin Motor_PWM_CN_Pin TEXT3_Pin
+                           TEXT2_Pin TEXT1_Pin */
+  GPIO_InitStruct.Pin = Motor_PWM_AN_Pin|Motor_PWM_BN_Pin|Motor_PWM_CN_Pin|TEXT3_Pin
+                          |TEXT2_Pin|TEXT1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /*Configure GPIO pin : Motro_fault_Pin */
   GPIO_InitStruct.Pin = Motro_fault_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Motro_fault_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : TEXT3_Pin TEXT2_Pin TEXT1_Pin */
-  GPIO_InitStruct.Pin = TEXT3_Pin|TEXT2_Pin|TEXT1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 

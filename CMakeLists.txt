@@ -53,6 +53,21 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g3")
 set(CMAKE_C_FLAGS_RELEASE   "-Os -g0")
 set(CMAKE_CXX_FLAGS_RELEASE "-Os -g0")
 
+# ===================== 跨文件内联（LTO） =====================
+# ISR 调用链上的函数（MotorPwm_SetDuty→Drv8311_Pwm_SetDuty、CurrentLoop_Run、
+# MC_SVPWM_Calc 等）都是外部函数：不开 LTO 时编译器无法跨文件内联，每次调用都要
+# 重新装载 handle 字段、多一次调用开销。开启后整条链可内联，ISR 预计再降 5~15%。
+#
+# 默认 OFF：这一项会改变链接方式（clang 走 lld 的 LTO 插件），需要你本机试一试。
+# 想开就把下面 OFF 改成 ON 重新 configure；若链接报错（LTO 插件/内存问题）改回 OFF 即可。
+option(MC_ENABLE_LTO "Enable link-time optimization (cross-file inlining)" OFF)
+if(MC_ENABLE_LTO)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    message("LTO: ON")
+else()
+    message("LTO: OFF（想开就把 CMakeLists.txt 里 MC_ENABLE_LTO 改成 ON）")
+endif()
+
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 

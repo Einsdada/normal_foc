@@ -59,6 +59,23 @@ void MotorPwm_Enable(MotorPwm_Handle_t *handle)
 }
 
 /**
+ * @brief  确保输出已使能（幂等：已使能则什么都不做）
+ * @param  handle  电机 PWM 句柄
+ * @retval 1 = 本次调用刚使能（即此前处于关断状态，调用方可据此做一次性初始化）
+ *         0 = 本来就已使能
+ * @note   每拍无条件调用安全：未使能时 MotorPwm_SetDuty 只缓存不输出（防误输出），
+ *         各模式从停止切入时不必自己判断使能状态，统一由本接口兜底
+ */
+uint8_t MotorPwm_EnsureEnabled(MotorPwm_Handle_t *handle)
+{
+    if (handle->enabled != 0u) {
+        return 0u;
+    }
+    MotorPwm_Enable(handle);
+    return 1u;
+}
+
+/**
  * @brief  关断电机输出：驱动器 sleep 低，三相关断
  * @param  handle  电机 PWM 句柄
  */
@@ -66,4 +83,29 @@ void MotorPwm_Disable(MotorPwm_Handle_t *handle)
 {
     handle->enabled = 0;
     Drv8311_Pwm_Disable();                      /* sleep 低，三相关断 */
+}
+
+/**
+ * @brief  停机：占空比清零 + 关断输出（设备层定义的安全态）
+ * @param  handle  电机 PWM 句柄
+ * @note   占空比必须先清零再关断：Disable 只拉低 sleep，缓存占空比会保留到下次
+ *         使能，清零可保证下次 Enable 的瞬间不会先输出上一次的残留占空比；
+ *         幂等，停止模式每拍调用安全
+ */
+void MotorPwm_Stop(MotorPwm_Handle_t *handle)
+{
+    MotorPwm_SetDuty(handle, 0.0f, 0.0f, 0.0f);
+    MotorPwm_Disable(handle);
+}
+
+/**
+ * @brief  读驱动器故障（nFAULT）
+ * @param  handle  电机 PWM 句柄
+ * @retval 1 = 有故障（DRV8311 输出级被关断：过流/欠压/过温等）
+ * @note   用于排查"给了电压却不走电流"；引脚配置在 BSP 内部（带内部上拉的输入）
+ */
+uint8_t MotorPwm_FaultRead(MotorPwm_Handle_t *handle)
+{
+    (void)handle;
+    return Drv8311_FaultRead();
 }

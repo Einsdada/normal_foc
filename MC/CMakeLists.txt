@@ -19,6 +19,12 @@ add_library(mc STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/Device/led.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Device/current_sensor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Device/motor_pwm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Control/control.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Database/mc_db.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Algorithm/foc.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Algorithm/mc_math.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Algorithm/mc_current.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Algorithm/pid.c
 )
 
 # 头文件搜索路径
@@ -28,7 +34,11 @@ target_include_directories(mc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/MT6701
     ${CMAKE_CURRENT_SOURCE_DIR}/BSP/DRV8311
     ${CMAKE_CURRENT_SOURCE_DIR}/Device
+    ${CMAKE_CURRENT_SOURCE_DIR}/Control
+    ${CMAKE_CURRENT_SOURCE_DIR}/Database
+    ${CMAKE_CURRENT_SOURCE_DIR}/Algorithm
 )
 
 # MC 代码依赖 CubeMX 生成的 HAL 头文件与宏定义（USE_HAL_DRIVER 等）
+# 正余弦用查表法（mc_math），无 libm 依赖
 target_link_libraries(mc PUBLIC stm32cubemx)
